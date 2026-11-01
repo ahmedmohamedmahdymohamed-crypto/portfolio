@@ -327,7 +327,34 @@
     .home-film-caption .mono{color:#97999b;margin:0;font-size:9px}
     .film-status{font-size:13px;line-height:1.6;color:#c5c5c5;margin:10px 0 0}
     @media(max-width:768px){.reference-grid{gap:32px 20px}.reference-visual{aspect-ratio:4/3}.reference-info p{font-size:9px}.reference-arrow{width:38px;height:38px;right:14px;bottom:14px}.reference-placeholder strong{font-size:clamp(22px,4vw,32px)}.home-films-header{align-items:start;flex-direction:column;gap:15px}.home-film-grid{gap:30px 18px}.home-film-caption h4{font-size:18px}}
-    @media(max-width:600px){.reference-grid,.home-film-grid{grid-template-columns:minmax(0,1fr)}.reference-card.landscape,.home-film:first-child,.home-film:last-child{grid-column:auto}#branding .landscape .reference-visual{aspect-ratio:16/9}.reference-placeholder strong{font-size:clamp(25px,7vw,36px)}.reference-placeholder .mono{font-size:9px}.reference-placeholder .request-note{font-size:8px}.reference-heading{margin-bottom:26px}.film-play-label{bottom:14px;right:15px}}
+    /* Preserve desktop project composition on small screens. */
+    @media(max-width:768px){
+      .reference-grid,.home-film-grid,.detail-gallery,.video-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:24px 12px;
+      }
+      .reference-card.landscape,.home-film:first-child,.home-film:last-child,
+      .visual-tile.wide,.video-card:first-child{grid-column:1/-1}
+      #branding .landscape .reference-visual{aspect-ratio:2.08}
+      .reference-info{padding:12px 0 14px}
+      .reference-title-row{gap:6px}
+      .reference-title-row h3{font-size:clamp(14px,3.5vw,22px);line-height:1.2;overflow-wrap:anywhere}
+      .reference-info p{font-size:clamp(7px,1.8vw,9px);letter-spacing:.07em;margin-top:7px}
+      .reference-arrow{width:32px;height:32px;right:10px;bottom:10px}
+      .reference-placeholder{padding:clamp(12px,3vw,22px)}
+      .reference-placeholder strong{font-size:clamp(17px,4vw,28px)}
+      .reference-placeholder .mono{font-size:clamp(6px,1.6vw,9px);letter-spacing:.1em}
+      .reference-placeholder .request-note{font-size:clamp(6px,1.5vw,8px)}
+      .home-film-caption{gap:6px;padding:12px 0}
+      .home-film-caption h4{font-size:clamp(13px,3.4vw,18px);line-height:1.25}
+      .home-film-caption .mono{font-size:clamp(6px,1.6vw,9px);letter-spacing:.1em}
+      .home-film-caption>span{flex-shrink:0}
+      .film-play-icon{width:44px;height:44px}
+      .film-play-label{bottom:9px;right:10px;font-size:7px;letter-spacing:.1em}
+      .video-card h3{font-size:clamp(13px,3.4vw,18px)}
+    }
+    @media(max-width:600px){.reference-heading{margin-bottom:26px}}
+
   </style>
 </head>
 <body>
