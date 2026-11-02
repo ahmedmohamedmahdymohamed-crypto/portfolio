@@ -499,18 +499,9 @@
     document.documentElement.classList.add('js');
     const home=$('#homePage'), detail=$('#detailPage'),header=$('#siteHeader'),menu=$('#mobileMenu'),menuBtn=$('#menuToggle');
 
-    // Ease the complete existing film, then overlap the upward exit and hero reveal.
-    let introDismissed=false, introFrame=0, introWatchdog=0;
+    // Keep native video playback stable on iOS; ease the overlay and hero in CSS.
+    let introDismissed=false, introWatchdog=0, stallTimer=0;
     const intro=$('#introOverlay'), introVid=$('#introVideo');
-    const smoothStep=x=>{x=Math.max(0,Math.min(1,x));return x*x*(3-2*x)};
-    const introRateAt=p=>.9+.3*smoothStep(p/.24)-.25*smoothStep((p-.68)/.32);
-    const animateIntroRate=()=>{
-      if(introDismissed)return;
-      const p=Number.isFinite(introVid.duration)&&introVid.duration>0?introVid.currentTime/introVid.duration:0;
-      const rate=introRateAt(p);
-      if(Math.abs(introVid.playbackRate-rate)>.015)introVid.playbackRate=rate;
-      introFrame=requestAnimationFrame(animateIntroRate);
-    };
     const completeIntro=()=>{
       intro.hidden=true;
       document.body.classList.remove('intro-active');
@@ -519,33 +510,40 @@
     const finishIntro=()=>{
       if(introDismissed)return;
       introDismissed=true;
-      cancelAnimationFrame(introFrame);
       clearTimeout(introWatchdog);
+      clearTimeout(stallTimer);
       introVid.pause();
       intro.classList.add('dismissed');
       if(reducedMotion.matches){completeIntro();return}
-      // The hero starts moving while the intro is still clearing the viewport.
       setTimeout(()=>document.body.classList.add('hero-ready'),160);
       intro.addEventListener('transitionend',e=>{
         if(e.target===intro&&e.propertyName==='transform')completeIntro();
       });
       setTimeout(completeIntro,1150);
     };
+    const monitorProgress=()=>{
+      clearTimeout(stallTimer);
+      if(!introDismissed)stallTimer=setTimeout(finishIntro,4500);
+    };
     if(reducedMotion.matches||location.hash.startsWith('#/project/')){
       introDismissed=true;introVid.pause();completeIntro();
     }else{
       document.body.classList.add('intro-active');
-      introVid.defaultPlaybackRate=.9;
-      introVid.playbackRate=.9;
+      // Set these properties before play() for Safari inline autoplay.
+      introVid.muted=true;
+      introVid.defaultMuted=true;
+      introVid.playsInline=true;
+      introVid.defaultPlaybackRate=1;
+      introVid.playbackRate=1;
       introVid.addEventListener('ended',finishIntro,{once:true});
       introVid.addEventListener('error',finishIntro,{once:true});
-      introVid.addEventListener('playing',()=>{
-        clearTimeout(introWatchdog);
-        introWatchdog=setTimeout(finishIntro,Math.max(16000,(introVid.duration||8)*1000/.9+5000));
-      },{once:true});
-      introWatchdog=setTimeout(finishIntro,18000);
-      introFrame=requestAnimationFrame(animateIntroRate);
-      introVid.play().catch(finishIntro);
+      introVid.addEventListener('timeupdate',monitorProgress);
+      introVid.addEventListener('playing',monitorProgress);
+      // A stalled decoder, blocked autoplay, or failed asset must never trap the page.
+      introWatchdog=setTimeout(finishIntro,15000);
+      monitorProgress();
+      const playback=introVid.play();
+      if(playback&&typeof playback.catch==='function')playback.catch(finishIntro);
     }
     $('#skipIntro').addEventListener('click',finishIntro);
 
