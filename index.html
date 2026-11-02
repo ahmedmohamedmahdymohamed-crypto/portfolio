@@ -378,13 +378,19 @@
     .section-anchor{position:absolute;top:0;left:0;width:1px;height:1px;overflow:hidden}
     .home-films-section{padding-top:0}
     .home-films-section .home-films{margin-top:0}
-    #workCarousel{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;cursor:grab}
-    #workCarousel.is-dragging{cursor:grabbing;scroll-snap-type:none;scroll-behavior:auto;user-select:none}
-    #workCarousel.is-dragging a{pointer-events:none}
-    #workCarousel .work-item{flex:0 0 clamp(300px,43vw,660px)}
-    #workCarousel .work-visual{height:auto;aspect-ratio:3/4;background:#121214}
-    #workCarousel .work-visual img{width:100%;height:100%;object-fit:contain;transition:filter .5s var(--ease)}
-    #workCarousel .work-link:hover .work-visual img{filter:brightness(1.05)}
+    /* The same rail powers Branding and the campaign sections (Social Media, Splash, Packaging). */
+    #workCarousel,.rail-carousel{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;cursor:grab}
+    #workCarousel.is-dragging,.rail-carousel.is-dragging{cursor:grabbing;scroll-snap-type:none;scroll-behavior:auto;user-select:none}
+    #workCarousel.is-dragging a,.rail-carousel.is-dragging a{pointer-events:none}
+    #workCarousel .work-item,.rail-carousel .work-item{flex:0 0 clamp(300px,43vw,660px)}
+    #workCarousel .work-visual,.rail-carousel .work-visual{height:auto;aspect-ratio:3/4;background:#121214}
+    #workCarousel .work-visual img,.rail-carousel .work-visual img{width:100%;height:100%;object-fit:contain;transition:filter .5s var(--ease)}
+    #workCarousel .work-link:hover .work-visual img,.rail-carousel .work-link:hover .work-visual img{filter:brightness(1.05)}
+    /* Rail-only: no arrows/buttons, so the scroll line is the position indicator. */
+    .rail-progress{width:100%}
+    .rail-progress .progress-line{width:0}
+    .rail-carousel .work-visual .reference-placeholder{width:100%;height:100%}
+    .rail-carousel .work-caption .mono{overflow-wrap:anywhere}
     /* REVES profile — complete presentation stacked page by page */
     .detail-gallery.pdf-gallery{gap:28px}
     .pdf-gallery .pdf-page{background:#fff;box-shadow:0 18px 50px #0b0b0d1a;border:1px solid #0b0b0d14}
@@ -396,8 +402,8 @@
     .guide-gallery .visual-tile.wide{grid-column:auto}
     .guide-gallery .visual-tile img{width:100%;height:auto;display:block}
     @media(max-width:768px){
-      #workCarousel .work-item{flex-basis:82vw}
-      #workCarousel .work-visual{aspect-ratio:3/4}
+      #workCarousel .work-item,.rail-carousel .work-item{flex-basis:82vw}
+      #workCarousel .work-visual,.rail-carousel .work-visual{aspect-ratio:3/4}
     }
   </style>
 </head>
@@ -454,15 +460,15 @@
       </div>
     </section>
 
-    <section class="section reference-section" id="social" aria-labelledby="social-heading"><div class="layout reference-inner"><h2 class="reference-heading" id="social-heading">Social media design</h2><div class="reference-grid" id="socialCampaignGrid"></div></div></section>
+    <section class="section reference-section" id="social" aria-labelledby="social-heading"><div class="layout reference-inner"><h2 class="reference-heading" id="social-heading">Social media design</h2><div class="progress-track rail-progress" aria-hidden="true"><div class="progress-line" id="socialProgress"></div></div><div class="work-carousel rail-carousel fade-up" id="socialCarousel" aria-label="Social media design projects"></div></div></section>
 
-    <section class="section reference-section" id="fashion" aria-labelledby="fashion-heading"><div class="layout reference-inner"><h2 class="reference-heading" id="fashion-heading">Splash collection</h2><div class="reference-grid" id="splashGrid"></div></div></section>
+    <section class="section reference-section" id="fashion" aria-labelledby="fashion-heading"><div class="layout reference-inner"><h2 class="reference-heading" id="fashion-heading">Splash collection</h2><div class="progress-track rail-progress" aria-hidden="true"><div class="progress-line" id="splashProgress"></div></div><div class="work-carousel rail-carousel fade-up" id="splashCarousel" aria-label="Splash collection projects"></div></div></section>
 
     <section class="section reference-section" id="editorial" aria-labelledby="editorial-heading"><div class="layout reference-inner"><h2 class="reference-heading" id="editorial-heading">Editorial & campaign work</h2><div class="reference-grid" id="editorialGrid"></div></div></section>
     <section class="section reference-section" id="photography" aria-labelledby="photography-heading"><div class="layout reference-inner"><h2 class="reference-heading" id="photography-heading">Product & studio photography</h2><div class="reference-grid" id="photographyGrid"></div></div></section>
     <section class="section reference-section" id="events" aria-labelledby="events-heading"><div class="layout reference-inner"><h2 class="reference-heading" id="events-heading">Event & spatial design</h2><div class="reference-grid" id="eventGrid"></div></div></section>
 
-    <section class="section reference-section" id="packaging" aria-labelledby="packaging-heading"><div class="layout reference-inner"><h2 class="reference-heading" id="packaging-heading">Packaging design</h2><div class="reference-grid" id="packagingGrid"></div></div></section>
+    <section class="section reference-section" id="packaging" aria-labelledby="packaging-heading"><div class="layout reference-inner"><h2 class="reference-heading" id="packaging-heading">Packaging design</h2><div class="progress-track rail-progress" aria-hidden="true"><div class="progress-line" id="packagingProgress"></div></div><div class="work-carousel rail-carousel fade-up" id="packagingCarousel" aria-label="Packaging design projects"></div></div></section>
 
     <section class="section reference-section" id="confidential" aria-labelledby="confidential-heading"><div class="layout reference-inner"><h2 class="reference-heading" id="confidential-heading">Confidential work</h2><div class="reference-grid" id="confidentialGrid"></div></div></section>
 
@@ -544,30 +550,40 @@
 
     const carouselSizes={'assets/branding/aiupc/aiupc_COVER_carousel.jpg':[1082,1453],'assets/branding/ovial/ovial_COVER_carousel.jpg':[1082,1453],'assets/branding/toub_house/toub_house_COVER_carousel.jpg':[1082,1453],'assets/branding/solid_home_orange/solid_home_COVER_carousel.jpg':[1054,1492],'assets/branding/reves/reves_COVER_carousel.jpg':[1082,1453]};
     function workCard(id,idx){
-      const p=projectById[id],src=p.cardCover||p.cover,size=carouselSizes[src]||[1082,1453],num=String(idx+1).padStart(2,'0');
-      return `<article class="work-item"><a class="work-link" href="#/project/${esc(p.id)}" aria-label="Explore ${esc(p.title)} project"><div class="work-visual"><img loading="lazy" src="${esc(src)}" width="${size[0]}" height="${size[1]}" alt="${esc(p.title)} — ${esc(p.category)} artwork"><span class="index-pill mono">${num}</span><span class="view-project" aria-hidden="true">↗</span></div><div class="work-caption"><div><h3>${esc(p.title)}</h3>${mon(p.category)}</div><span style="color:#888">↗</span></div></a></article>`;
+      const p=projectById[id],src=p.cardCover||p.cover,size=carouselSizes[src]||galleryImageSizes.get(src)||[1082,1453],num=String(idx+1).padStart(2,'0');
+      const visual=src?`<img loading="lazy" src="${esc(src)}" width="${size[0]}" height="${size[1]}" alt="${esc(p.title)} — ${esc(p.category)} artwork"><span class="index-pill mono">${num}</span>`:`<div class="reference-placeholder"><span class="mono">${esc(p.category)}</span><strong>${esc(p.title)}</strong><span class="mono request-note">Project visuals available upon request</span></div>`;
+      return `<article class="work-item"><a class="work-link" href="#/project/${esc(p.id)}" aria-label="Explore ${esc(p.title)} project"><div class="work-visual">${visual}<span class="view-project" aria-hidden="true">↗</span></div><div class="work-caption"><div><h3>${esc(p.title)}</h3>${mon(p.category)}</div><span style="color:#888">↗</span></div></a></article>`;
     }
+    // One horizontal rail implementation, shared by Branding and the campaign sections.
+    function initRail(carousel,{prev,next,counter,progress}={}){
+      const cards=()=>[...carousel.children];
+      let selected=0,dragStartX=0,dragStartScroll=0,dragging=false,dragMoved=false;
+      function cardStep(){const first=cards()[0];if(!first)return 0;return first.getBoundingClientRect().width+(parseFloat(getComputedStyle(carousel).gap)||0)}
+      function canScroll(){return carousel.scrollWidth-carousel.clientWidth>2}
+      function renderControls(){const list=cards();if(counter)counter.innerHTML=`${String(selected+1).padStart(2,'0')} <em></em> <span>${String(list.length).padStart(2,'0')}</span>`;if(progress&&carousel.clientWidth)progress.style.width=(canScroll()?((selected+1)/Math.max(1,list.length)*100):100)+'%';if(prev)prev.disabled=selected<=0;if(next)next.disabled=selected>=list.length-1}
+      function updateRail(){const list=cards();if(!list.length)return;const step=cardStep()||1;const idx=Math.min(list.length-1,Math.max(0,Math.round(carousel.scrollLeft/step)));if(idx!==selected){selected=idx;renderControls()}}
+      function goTo(i){const list=cards();if(!list.length)return;selected=Math.max(0,Math.min(list.length-1,i));renderControls();if(typeof carousel.scrollTo==='function')carousel.scrollTo({left:list[selected].offsetLeft-list[0].offsetLeft,behavior:reducedMotion.matches?'instant':'smooth'})}
+      if(prev)prev.addEventListener('click',()=>goTo(selected-1));
+      if(next)next.addEventListener('click',()=>goTo(selected+1));
+      carousel.addEventListener('scroll',()=>requestAnimationFrame(updateRail),{passive:true});
+      window.addEventListener('resize',()=>{updateRail();renderControls()});
+      // Keeps the counter and scroll line correct when the rail returns from a project page or reflows.
+      if('ResizeObserver' in window)new ResizeObserver(()=>{updateRail();renderControls()}).observe(carousel);
+      renderControls();
+      // Desktop click-and-drag; touch devices and trackpads use native horizontal scrolling.
+      carousel.addEventListener('pointerdown',e=>{if(e.pointerType&&e.pointerType!=='mouse')return;if(e.button!==0)return;dragging=true;dragMoved=false;dragStartX=e.clientX;dragStartScroll=carousel.scrollLeft});
+      window.addEventListener('pointermove',e=>{if(!dragging)return;const dx=e.clientX-dragStartX;if(Math.abs(dx)>4){dragMoved=true;carousel.classList.add('is-dragging');carousel.scrollLeft=dragStartScroll-dx}});
+      window.addEventListener('pointerup',()=>{if(!dragging)return;dragging=false;carousel.classList.remove('is-dragging');if(dragMoved){const step=cardStep()||1;goTo(Math.round(carousel.scrollLeft/step))}});
+      carousel.addEventListener('click',e=>{if(dragMoved){e.preventDefault();e.stopPropagation();dragMoved=false}},true);
+      carousel.addEventListener('dragstart',e=>e.preventDefault());
+    }
+    const railGroups={socialCarousel:['marsa','aiupc-social','ajman-hr','rnj-social'],splashCarousel:['product-social','material-story','all-about-details','subtle-details'],packagingCarousel:['egyummy','misk']};
+    Object.entries(railGroups).forEach(([id,ids])=>{const rail=$('#'+id);if(!rail)return;rail.innerHTML=ids.map(workCard).join('');initRail(rail,{progress:$('#'+id.replace('Carousel','Progress'))})});
     $('#workCarousel').innerHTML=brandIds.map(workCard).join('');
-    const carousel=$('#workCarousel'),prev=$('#workPrev'),next=$('#workNext'),counter=$('#workCounter'),progress=$('#workProgress');
-    const cards=()=>[...carousel.children];
-    let selected=0,dragStartX=0,dragStartScroll=0,dragging=false,dragMoved=false;
-    function cardStep(){const first=cards()[0];if(!first)return 0;return first.getBoundingClientRect().width+(parseFloat(getComputedStyle(carousel).gap)||0)}
-    function renderControls(){const list=cards();counter.innerHTML=`${String(selected+1).padStart(2,'0')} <em></em> <span>${String(list.length).padStart(2,'0')}</span>`;progress.style.width=((selected+1)/Math.max(1,list.length)*100)+'%';prev.disabled=selected<=0;next.disabled=selected>=list.length-1}
-    function updateCarousel(){const list=cards();if(!list.length)return;const step=cardStep()||1;const idx=Math.min(list.length-1,Math.max(0,Math.round(carousel.scrollLeft/step)));if(idx!==selected){selected=idx;renderControls()}}
-    function goTo(i){const list=cards();if(!list.length)return;selected=Math.max(0,Math.min(list.length-1,i));renderControls();if(typeof carousel.scrollTo==='function')carousel.scrollTo({left:list[selected].offsetLeft-list[0].offsetLeft,behavior:reducedMotion.matches?'instant':'smooth'})}
-    prev.addEventListener('click',()=>goTo(selected-1));
-    next.addEventListener('click',()=>goTo(selected+1));
-    carousel.addEventListener('scroll',()=>requestAnimationFrame(updateCarousel),{passive:true});
-    window.addEventListener('resize',updateCarousel);
-    renderControls();
-    // Desktop click-and-drag; touch devices and trackpads use native horizontal scrolling.
-    carousel.addEventListener('pointerdown',e=>{if(e.pointerType&&e.pointerType!=='mouse')return;if(e.button!==0)return;dragging=true;dragMoved=false;dragStartX=e.clientX;dragStartScroll=carousel.scrollLeft});
-    window.addEventListener('pointermove',e=>{if(!dragging)return;const dx=e.clientX-dragStartX;if(Math.abs(dx)>4){dragMoved=true;carousel.classList.add('is-dragging');carousel.scrollLeft=dragStartScroll-dx}});
-    window.addEventListener('pointerup',()=>{if(!dragging)return;dragging=false;carousel.classList.remove('is-dragging');if(dragMoved){const step=cardStep()||1;goTo(Math.round(carousel.scrollLeft/step))}});
-    carousel.addEventListener('click',e=>{if(dragMoved){e.preventDefault();e.stopPropagation();dragMoved=false}},true);
-    carousel.addEventListener('dragstart',e=>e.preventDefault());
+    initRail($('#workCarousel'),{prev:$('#workPrev'),next:$('#workNext'),counter:$('#workCounter'),progress:$('#workProgress')});
     function referenceCard(id,i,landscape=false){const p=projectById[id];const cardSrc=p.cardCover||p.cover;return `<a href="#/project/${esc(id)}" class="reference-card fade-up ${landscape?'landscape':''}"><div class="reference-visual">${cardSrc?`<img loading="lazy" src="${esc(cardSrc)}" alt="${esc(p.title)} — original project cover">`:`<div class="reference-placeholder"><span class="mono">${esc(p.category)}</span><strong>${esc(p.title)}</strong><span class="mono request-note">Project visuals available upon request</span></div>`}<span class="reference-arrow" aria-hidden="true">↗</span></div><div class="reference-info"><div class="reference-title-row"><h3>${esc(p.title)}</h3><span aria-hidden="true">↗</span></div><p class="mono">${esc(p.category)}</p></div></a>`}
-    const referenceGroups={socialCampaignGrid:['marsa','aiupc-social','ajman-hr','rnj-social'],splashGrid:['product-social','material-story','all-about-details','subtle-details'],editorialGrid:['splash-maya-diab','art-direction','ai-photo-session','editorial-lookbook'],photographyGrid:['product-photography'],eventGrid:['ajman-event'],packagingGrid:['egyummy','misk'],confidentialGrid:['dubai-police']};
+    /* Social Media, Splash and Packaging render through the shared rail above. */
+    const referenceGroups={editorialGrid:['splash-maya-diab','art-direction','ai-photo-session','editorial-lookbook'],photographyGrid:['product-photography'],eventGrid:['ajman-event'],confidentialGrid:['dubai-police']};
     Object.entries(referenceGroups).forEach(([grid,ids])=>{$('#'+grid).innerHTML=ids.map((id,i)=>referenceCard(id,i)).join('')});
     const homeFilms=projects.flatMap(p=>p.videos.map(v=>({...v,category:p.eyebrow})));
     $('#homeFilmGrid').innerHTML=homeFilms.map((v,i)=>`<article class="home-film"><div class="home-film-screen"><video id="home-film-${i}" playsinline preload="metadata" poster="${esc(v.poster)}" aria-label="${esc(v.title)}"><source src="${esc(v.src)}" type="video/mp4">Your browser does not support HTML5 video.</video><button type="button" class="film-poster" data-play-film="home-film-${i}" aria-label="Play ${esc(v.title)}"><img src="${esc(v.poster)}" alt="" loading="lazy"><span class="film-play-icon" aria-hidden="true"></span><span class="film-play-label mono">PLAY FILM ↗</span></button></div><div class="home-film-caption"><div><h4>${esc(v.title)}</h4><p class="mono">${esc(v.category)}</p></div><span class="mono">${String(i+1).padStart(2,'0')}</span></div><p class="film-status" role="status" hidden></p></article>`).join('');
