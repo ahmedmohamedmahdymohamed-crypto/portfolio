@@ -47,13 +47,15 @@
     .mobile-menu.active{transform:translateY(0)}
     .mobile-menu a{display:flex;gap:20px;align-items:baseline;font-size:clamp(48px,11vw,75px);line-height:1.3;letter-spacing:-.05em;font-weight:500}
     .mobile-menu a span{font-size:10px;letter-spacing:0;color:var(--signal)}
-    .intro{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000;z-index:300;overflow:hidden;transition:clip-path .75s var(--ease-cinema);clip-path:inset(0 0 0 0)}
-    .intro.dismissed{clip-path:inset(0 0 100% 0);pointer-events:none}
+    .intro{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000;z-index:300;overflow:hidden;transform:translate3d(0,0,0);transition:transform 1.05s cubic-bezier(.65,0,.25,1);will-change:transform}
+    .intro.dismissed{transform:translate3d(0,-100%,0);pointer-events:none}
     .intro video{width:min(78vmin,480px);height:min(78vmin,480px);object-fit:contain}
     .intro-skip{position:absolute;bottom:max(30px,env(safe-area-inset-bottom));right:clamp(24px,5vw,75px);border:0;background:transparent;color:var(--signal);min-height:44px;padding:12px;font-size:10px;letter-spacing:.2em;font-family:'DM Mono',monospace}
     .intro-skip:hover,.intro-skip:focus-visible{color:#fff}
     .hero{height:100svh;min-height:650px;background:var(--paper);position:relative;overflow:hidden}
     .hero-bg,.hero-bg picture,.hero-bg img{position:absolute;inset:0;width:100%;height:100%}
+    .hero-bg{transform:translate3d(0,0,0);transition:transform 1.3s cubic-bezier(.22,1,.36,1)}
+    body.intro-active:not(.hero-ready) .hero-bg{transform:translate3d(0,24px,0) scale(1.02)}
     .hero-bg img{object-fit:cover;object-position:55% center}
     .hero-content{position:absolute;z-index:2;top:50%;left:clamp(24px,5vw,96px);width:45%;transform:translateY(-46%)}
     .hero-label{display:flex;align-items:center;gap:12px;margin:0 0 26px;color:#363834}
@@ -497,34 +499,53 @@
     document.documentElement.classList.add('js');
     const home=$('#homePage'), detail=$('#detailPage'),header=$('#siteHeader'),menu=$('#mobileMenu'),menuBtn=$('#menuToggle');
 
-    // Intro is shown once per browser tab; direct case-study links skip the intro.
-    let introDismissed=false;
-    // Intro speed: 50 = 50% faster (1.5x playback). Change this single value to retune.
-    const INTRO_FASTER_PERCENT = 50;
-    const introRate = 1 + INTRO_FASTER_PERCENT/100;
+    // Ease the complete existing film, then overlap the upward exit and hero reveal.
+    let introDismissed=false, introFrame=0, introWatchdog=0;
     const intro=$('#introOverlay'), introVid=$('#introVideo');
-    const setIntroRate=()=>{try{introVid.playbackRate=introRate}catch(e){}};
-    const hasSeenIntro=()=>{try{return sessionStorage.getItem('ahmed-intro-seen')==='1'}catch(e){return false}};
-    const markIntroSeen=()=>{try{sessionStorage.setItem('ahmed-intro-seen','1')}catch(e){}};
+    const smoothStep=x=>{x=Math.max(0,Math.min(1,x));return x*x*(3-2*x)};
+    const introRateAt=p=>.9+.3*smoothStep(p/.24)-.25*smoothStep((p-.68)/.32);
+    const animateIntroRate=()=>{
+      if(introDismissed)return;
+      const p=Number.isFinite(introVid.duration)&&introVid.duration>0?introVid.currentTime/introVid.duration:0;
+      const rate=introRateAt(p);
+      if(Math.abs(introVid.playbackRate-rate)>.015)introVid.playbackRate=rate;
+      introFrame=requestAnimationFrame(animateIntroRate);
+    };
+    const completeIntro=()=>{
+      intro.hidden=true;
+      document.body.classList.remove('intro-active');
+      document.body.classList.add('hero-ready');
+    };
     const finishIntro=()=>{
       if(introDismissed)return;
       introDismissed=true;
+      cancelAnimationFrame(introFrame);
+      clearTimeout(introWatchdog);
       introVid.pause();
-      markIntroSeen();
       intro.classList.add('dismissed');
-      document.body.classList.remove('intro-active');
-      document.body.classList.add('hero-ready');
-      setTimeout(()=>{intro.hidden=true},850);
+      if(reducedMotion.matches){completeIntro();return}
+      // The hero starts moving while the intro is still clearing the viewport.
+      setTimeout(()=>document.body.classList.add('hero-ready'),160);
+      intro.addEventListener('transitionend',e=>{
+        if(e.target===intro&&e.propertyName==='transform')completeIntro();
+      });
+      setTimeout(completeIntro,1150);
     };
-    if(reducedMotion.matches||location.hash.startsWith('#/project/')){intro.hidden=true;introDismissed=true;document.body.classList.add('hero-ready')}
-    else{
+    if(reducedMotion.matches||location.hash.startsWith('#/project/')){
+      introDismissed=true;introVid.pause();completeIntro();
+    }else{
       document.body.classList.add('intro-active');
-      setIntroRate();
-      introVid.addEventListener('loadedmetadata',setIntroRate);
-      introVid.addEventListener('ended',finishIntro);
-      introVid.addEventListener('error',finishIntro);
+      introVid.defaultPlaybackRate=.9;
+      introVid.playbackRate=.9;
+      introVid.addEventListener('ended',finishIntro,{once:true});
+      introVid.addEventListener('error',finishIntro,{once:true});
+      introVid.addEventListener('playing',()=>{
+        clearTimeout(introWatchdog);
+        introWatchdog=setTimeout(finishIntro,Math.max(16000,(introVid.duration||8)*1000/.9+5000));
+      },{once:true});
+      introWatchdog=setTimeout(finishIntro,18000);
+      introFrame=requestAnimationFrame(animateIntroRate);
       introVid.play().catch(finishIntro);
-      setTimeout(finishIntro, Math.max(4000, Math.ceil(12000/introRate)));
     }
     $('#skipIntro').addEventListener('click',finishIntro);
 
