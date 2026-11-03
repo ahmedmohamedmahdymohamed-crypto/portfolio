@@ -49,11 +49,15 @@
     .mobile-menu a span{font-size:10px;letter-spacing:0;color:var(--signal)}
     .intro{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000;z-index:300;overflow:hidden;transform:translate3d(0,0,0);transition:transform 1.05s cubic-bezier(.65,0,.25,1);will-change:transform}
     .intro.dismissed{transform:translate3d(0,-100%,0);pointer-events:none}
-    .intro video{width:min(78vmin,480px);height:min(78vmin,480px);object-fit:contain}
+    .intro video{width:min(78vmin,480px);height:min(78vmin,480px);object-fit:contain;pointer-events:none;background:transparent}
+    /* No browser "tap to play" affordance is ever drawn over the logo animation. */
+    .intro video::-webkit-media-controls{display:none!important;-webkit-appearance:none!important}
+    .intro video::-webkit-media-controls-enclosure{display:none!important}
+    .intro video::-webkit-media-controls-panel{display:none!important}
+    .intro video::-webkit-media-controls-start-playback-button{display:none!important;-webkit-appearance:none!important;opacity:0!important;pointer-events:none!important}
+    .intro video::-webkit-media-controls-play-button{display:none!important}
     .intro-skip{position:absolute;bottom:max(30px,env(safe-area-inset-bottom));right:clamp(24px,5vw,75px);border:0;background:transparent;color:var(--signal);min-height:44px;padding:12px;font-size:10px;letter-spacing:.2em;font-family:'DM Mono',monospace}
     .intro-skip:hover,.intro-skip:focus-visible{color:#fff}
-    .intro-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;min-height:48px;padding:16px 24px;border:1px solid var(--signal);background:#000d;color:var(--signal);font:12px 'DM Mono',monospace;letter-spacing:.14em}
-    .intro-status{position:absolute;left:20px;right:20px;top:calc(50% + 44px);text-align:center;color:#ddd;font-size:13px;line-height:1.5}
     .hero{height:100svh;min-height:650px;background:var(--paper);position:relative;overflow:hidden}
     .hero-bg,.hero-bg picture,.hero-bg img{position:absolute;inset:0;width:100%;height:100%}
     .hero-bg{transform:translate3d(0,0,0);transition:transform 1.3s cubic-bezier(.22,1,.36,1)}
@@ -411,9 +415,7 @@
 </head>
 <body>
   <div class="intro" id="introOverlay" aria-label="Portfolio logo introduction">
-    <video id="introVideo" src="assets/hero/mahdy_red_intro.mp4" width="512" height="512" muted autoplay playsinline preload="auto" aria-hidden="true"></video>
-    <button class="intro-play" id="playIntro" type="button" hidden>PLAY INTRO →</button>
-    <p class="intro-status" id="introStatus" role="status" hidden></p>
+    <video id="introVideo" src="assets/hero/mahdy_red_intro.mp4" width="512" height="512" muted autoplay playsinline webkit-playsinline disablepictureinpicture preload="auto" aria-hidden="true"></video>
     <button class="intro-skip" id="skipIntro" aria-label="Skip logo animation">SKIP INTRO ↗</button>
   </div>
   <header class="site-header" id="siteHeader">
@@ -503,10 +505,11 @@
     document.documentElement.classList.add('js');
     const home=$('#homePage'), detail=$('#detailPage'),header=$('#siteHeader'),menu=$('#mobileMenu'),menuBtn=$('#menuToggle');
 
-    // Failed autoplay offers a real play action; only Ended or Skip opens the hero.
-    let introDismissed=false, introPromptTimer=0;
+    // Autoplay first: the logo animation always starts muted and inline. If a
+    // browser still refuses autoplay we retry on the visitor's first tap and
+    // otherwise open the site, so the intro never waits behind a play request.
+    let introDismissed=false, introWatchdog=0, introStartGuard=0;
     const intro=$('#introOverlay'), introVid=$('#introVideo');
-    const playIntro=$('#playIntro'), introStatus=$('#introStatus');
     const completeIntro=()=>{
       intro.hidden=true;
       document.body.classList.remove('intro-active');
@@ -515,7 +518,8 @@
     const finishIntro=()=>{
       if(introDismissed)return;
       introDismissed=true;
-      clearTimeout(introPromptTimer);
+      clearTimeout(introWatchdog);
+      clearTimeout(introStartGuard);
       introVid.pause();
       intro.classList.add('dismissed');
       if(reducedMotion.matches){completeIntro();return}
@@ -525,17 +529,14 @@
       });
       setTimeout(completeIntro,1150);
     };
-    const offerPlay=(message='Tap Play Intro to start the animation.')=>{
-      if(introDismissed)return;
-      clearTimeout(introPromptTimer);
-      playIntro.hidden=false;
-      introStatus.hidden=false;
-      introStatus.textContent=message;
+    const introRunning=()=>!introVid.paused&&!introVid.ended&&introVid.currentTime>0.02;
+    const armIntroWatchdog=()=>{
+      clearTimeout(introWatchdog);
+      introWatchdog=setTimeout(finishIntro,Math.max(12000,(introVid.duration||8)*1000+4000));
     };
     const startIntro=()=>{
       if(introDismissed)return;
-      playIntro.hidden=true;
-      introStatus.hidden=true;
+      // Autoplay eligibility is re-asserted on every attempt.
       introVid.muted=true;
       introVid.defaultMuted=true;
       introVid.playsInline=true;
@@ -543,30 +544,40 @@
       introVid.playbackRate=1;
       if(introVid.error)introVid.load();
       if(introVid.ended)introVid.currentTime=0;
-      clearTimeout(introPromptTimer);
-      introPromptTimer=setTimeout(()=>offerPlay('Tap Play Intro to continue, or Skip Intro to enter.'),8000);
-      try{
-        const playback=introVid.play();
-        if(playback&&typeof playback.catch==='function')playback.catch(()=>offerPlay());
-      }catch(e){offerPlay()}
+      let playback=null;
+      try{playback=introVid.play()}catch(e){playback=null}
+      if(playback&&typeof playback.catch==='function')playback.catch(introPlayBlocked);
+      clearTimeout(introStartGuard);
+      introStartGuard=setTimeout(()=>{
+        if(introRunning())return;
+        // Give a file that is still loading one more moment before moving on.
+        if(introVid.readyState<3&&introVid.currentTime===0&&!introVid.error){
+          introStartGuard=setTimeout(()=>{if(!introRunning())finishIntro()},2000);
+          return;
+        }
+        finishIntro();
+      },2400);
+      armIntroWatchdog();
+    };
+    const introPlayBlocked=()=>{
+      if(introDismissed)return;
+      // Some browsers allow playback only after a gesture: start on the first
+      // one, never ask for it, and open the site if no gesture arrives.
+      clearTimeout(introStartGuard);
+      ['pointerdown','touchstart','keydown'].forEach(t=>window.addEventListener(t,startIntro,{once:true,passive:true}));
+      introStartGuard=setTimeout(()=>{if(!introRunning())finishIntro()},2400);
     };
     introVid.addEventListener('ended',finishIntro,{once:true});
-    introVid.addEventListener('error',()=>offerPlay('The animation could not load. Tap Play Intro to retry.'));
-    introVid.addEventListener('playing',()=>{
-      clearTimeout(introPromptTimer);
-      playIntro.hidden=true;
-      introStatus.hidden=true;
-    });
-    playIntro.addEventListener('click',startIntro);
+    introVid.addEventListener('error',finishIntro,{once:true});
+    introVid.addEventListener('playing',armIntroWatchdog);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!introDismissed&&!introRunning())startIntro()});
     $('#skipIntro').addEventListener('click',finishIntro);
     if(location.hash.startsWith('#/project/')){
       introDismissed=true;introVid.pause();completeIntro();
     }else{
       document.body.classList.add('intro-active');
-      if(reducedMotion.matches){
-        introVid.pause();
-        offerPlay('Play the animation, or Skip Intro to enter.');
-      }else startIntro();
+      if(reducedMotion.matches){introDismissed=true;introVid.pause();completeIntro()}
+      else startIntro();
     }
 
     function closeMenu(){menu.classList.remove('active');menuBtn.classList.remove('active');menuBtn.setAttribute('aria-expanded','false');menuBtn.setAttribute('aria-label','Open menu');menu.setAttribute('aria-hidden','true');document.body.style.overflow=''}
