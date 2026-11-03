@@ -52,6 +52,8 @@
     .intro video{width:min(78vmin,480px);height:min(78vmin,480px);object-fit:contain}
     .intro-skip{position:absolute;bottom:max(30px,env(safe-area-inset-bottom));right:clamp(24px,5vw,75px);border:0;background:transparent;color:var(--signal);min-height:44px;padding:12px;font-size:10px;letter-spacing:.2em;font-family:'DM Mono',monospace}
     .intro-skip:hover,.intro-skip:focus-visible{color:#fff}
+    .intro-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;min-height:48px;padding:16px 24px;border:1px solid var(--signal);background:#000d;color:var(--signal);font:12px 'DM Mono',monospace;letter-spacing:.14em}
+    .intro-status{position:absolute;left:20px;right:20px;top:calc(50% + 44px);text-align:center;color:#ddd;font-size:13px;line-height:1.5}
     .hero{height:100svh;min-height:650px;background:var(--paper);position:relative;overflow:hidden}
     .hero-bg,.hero-bg picture,.hero-bg img{position:absolute;inset:0;width:100%;height:100%}
     .hero-bg{transform:translate3d(0,0,0);transition:transform 1.3s cubic-bezier(.22,1,.36,1)}
@@ -410,6 +412,8 @@
 <body>
   <div class="intro" id="introOverlay" aria-label="Portfolio logo introduction">
     <video id="introVideo" src="assets/hero/mahdy_red_intro.mp4" width="512" height="512" muted autoplay playsinline preload="auto" aria-hidden="true"></video>
+    <button class="intro-play" id="playIntro" type="button" hidden>PLAY INTRO →</button>
+    <p class="intro-status" id="introStatus" role="status" hidden></p>
     <button class="intro-skip" id="skipIntro" aria-label="Skip logo animation">SKIP INTRO ↗</button>
   </div>
   <header class="site-header" id="siteHeader">
@@ -499,9 +503,10 @@
     document.documentElement.classList.add('js');
     const home=$('#homePage'), detail=$('#detailPage'),header=$('#siteHeader'),menu=$('#mobileMenu'),menuBtn=$('#menuToggle');
 
-    // Keep native video playback stable on iOS; ease the overlay and hero in CSS.
-    let introDismissed=false, introWatchdog=0, stallTimer=0;
+    // Failed autoplay offers a real play action; only Ended or Skip opens the hero.
+    let introDismissed=false, introPromptTimer=0;
     const intro=$('#introOverlay'), introVid=$('#introVideo');
+    const playIntro=$('#playIntro'), introStatus=$('#introStatus');
     const completeIntro=()=>{
       intro.hidden=true;
       document.body.classList.remove('intro-active');
@@ -510,8 +515,7 @@
     const finishIntro=()=>{
       if(introDismissed)return;
       introDismissed=true;
-      clearTimeout(introWatchdog);
-      clearTimeout(stallTimer);
+      clearTimeout(introPromptTimer);
       introVid.pause();
       intro.classList.add('dismissed');
       if(reducedMotion.matches){completeIntro();return}
@@ -521,31 +525,49 @@
       });
       setTimeout(completeIntro,1150);
     };
-    const monitorProgress=()=>{
-      clearTimeout(stallTimer);
-      if(!introDismissed)stallTimer=setTimeout(finishIntro,4500);
+    const offerPlay=(message='Tap Play Intro to start the animation.')=>{
+      if(introDismissed)return;
+      clearTimeout(introPromptTimer);
+      playIntro.hidden=false;
+      introStatus.hidden=false;
+      introStatus.textContent=message;
     };
-    if(reducedMotion.matches||location.hash.startsWith('#/project/')){
-      introDismissed=true;introVid.pause();completeIntro();
-    }else{
-      document.body.classList.add('intro-active');
-      // Set these properties before play() for Safari inline autoplay.
+    const startIntro=()=>{
+      if(introDismissed)return;
+      playIntro.hidden=true;
+      introStatus.hidden=true;
       introVid.muted=true;
       introVid.defaultMuted=true;
       introVid.playsInline=true;
       introVid.defaultPlaybackRate=1;
       introVid.playbackRate=1;
-      introVid.addEventListener('ended',finishIntro,{once:true});
-      introVid.addEventListener('error',finishIntro,{once:true});
-      introVid.addEventListener('timeupdate',monitorProgress);
-      introVid.addEventListener('playing',monitorProgress);
-      // A stalled decoder, blocked autoplay, or failed asset must never trap the page.
-      introWatchdog=setTimeout(finishIntro,15000);
-      monitorProgress();
-      const playback=introVid.play();
-      if(playback&&typeof playback.catch==='function')playback.catch(finishIntro);
-    }
+      if(introVid.error)introVid.load();
+      if(introVid.ended)introVid.currentTime=0;
+      clearTimeout(introPromptTimer);
+      introPromptTimer=setTimeout(()=>offerPlay('Tap Play Intro to continue, or Skip Intro to enter.'),8000);
+      try{
+        const playback=introVid.play();
+        if(playback&&typeof playback.catch==='function')playback.catch(()=>offerPlay());
+      }catch(e){offerPlay()}
+    };
+    introVid.addEventListener('ended',finishIntro,{once:true});
+    introVid.addEventListener('error',()=>offerPlay('The animation could not load. Tap Play Intro to retry.'));
+    introVid.addEventListener('playing',()=>{
+      clearTimeout(introPromptTimer);
+      playIntro.hidden=true;
+      introStatus.hidden=true;
+    });
+    playIntro.addEventListener('click',startIntro);
     $('#skipIntro').addEventListener('click',finishIntro);
+    if(location.hash.startsWith('#/project/')){
+      introDismissed=true;introVid.pause();completeIntro();
+    }else{
+      document.body.classList.add('intro-active');
+      if(reducedMotion.matches){
+        introVid.pause();
+        offerPlay('Play the animation, or Skip Intro to enter.');
+      }else startIntro();
+    }
 
     function closeMenu(){menu.classList.remove('active');menuBtn.classList.remove('active');menuBtn.setAttribute('aria-expanded','false');menuBtn.setAttribute('aria-label','Open menu');menu.setAttribute('aria-hidden','true');document.body.style.overflow=''}
     function toggleMenu(){const open=menu.classList.toggle('active');menuBtn.classList.toggle('active',open);menuBtn.setAttribute('aria-expanded',open?'true':'false');menuBtn.setAttribute('aria-label',open?'Close menu':'Open menu');menu.setAttribute('aria-hidden',open?'false':'true');document.body.style.overflow=open?'hidden':''}
